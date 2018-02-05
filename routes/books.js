@@ -1,8 +1,4 @@
-import { func } from '../../Library/Caches/typescript/2.6/node_modules/@types/joi';
-
 const https = require('https');
-const Models = require('../models');
-
 
 module.exports = [
 {
@@ -80,7 +76,7 @@ module.exports = [
 			});
 			outer.on('end', ()=>{
 				jsonObject = JSON.parse(str);
-
+                let i=0;
 				for (let books in jsonObject.books){
 					let id = jsonObject.books[books].id;
 					https.get('https://5gj1qvkc5h.execute-api.us-east-1.amazonaws.com/dev/findBookById/'+id, (inner)=>{
@@ -93,58 +89,25 @@ module.exports = [
 						inner.on('end', ()=>{
 							obj = JSON.parse(str1);
 							jsonObject.books[books]['rating'] = obj.rating;
+                            //insertIntoDb(jsonObject.books);
+                            i++;
+                            if(i === jsonObject.books.length)
+                            {
+                                reply({
+                                    data: grouping(jsonObject.books),
+                                    statusCode: 200,
+                                });
+                
+                            }
 						});
-					});
+                    });
+                    
 				}
-
-				reply({
-                    data: grouping(jsonObject.books),
-					statusCode: 200,
-				});
-
+                //console.log(jsonObject.books.rating);
+				
 			});
 		});
 	}
-},
-{method: 'GET',
-path: '/books/combined',
-handler: (request, reply)=>{
-    let str = '';
-    let jsonObject = {};
-
-    https.get('https://5gj1qvkc5h.execute-api.us-east-1.amazonaws.com/dev/allBooks', (outer)=>{
-        outer.setEncoding('utf8');
-        outer.on('data', (data)=>{
-            str = str + data;
-        });
-        outer.on('end', ()=>{
-            jsonObject = JSON.parse(str);
-
-            for (let books in jsonObject.books){
-                let id = jsonObject.books[books].id;
-                https.get('https://5gj1qvkc5h.execute-api.us-east-1.amazonaws.com/dev/findBookById/'+id, (inner)=>{
-                    let str1 = '';
-                    let obj = {};
-                    inner.setEncoding('utf8');
-                    inner.on('data', (data)=>{
-                        str1 = str1+data; 
-                    });
-                    inner.on('end', ()=>{
-                        obj = JSON.parse(str1);
-                        jsonObject.books[books]['rating'] = obj.rating;
-                    });
-                    //insertIntoDb(jsonObject.books);
-                });
-            }
-
-            reply({
-                data: grouping(jsonObject.books),
-                statusCode: 200,
-            });
-
-        });
-    });
-}
 }];
 function grouping(array)
 {
@@ -165,10 +128,11 @@ function grouping(array)
             obj[array[i]['Author']] = obj[array[i]['Author']].concat(array[i]);
         }
     }
-    //console.log(obj);
+    //console.log("combined:",obj);
     return obj;
 
 }
+
 function insertIntoDb(array)
 {
     for(let i = 0; i < array.length ; i++)
