@@ -1,4 +1,8 @@
+import { func } from '../../Library/Caches/typescript/2.6/node_modules/@types/joi';
+
 const https = require('https');
+const Models = require('../models');
+
 
 module.exports = [
 {
@@ -89,8 +93,6 @@ module.exports = [
 						inner.on('end', ()=>{
 							obj = JSON.parse(str1);
 							jsonObject.books[books]['rating'] = obj.rating;
-                            //console.log(jsonObject.books);
-                            //console.log(grouping(jsonObject.books));
 						});
 					});
 				}
@@ -103,11 +105,51 @@ module.exports = [
 			});
 		});
 	}
+},
+{method: 'GET',
+path: '/books/combined',
+handler: (request, reply)=>{
+    let str = '';
+    let jsonObject = {};
+
+    https.get('https://5gj1qvkc5h.execute-api.us-east-1.amazonaws.com/dev/allBooks', (outer)=>{
+        outer.setEncoding('utf8');
+        outer.on('data', (data)=>{
+            str = str + data;
+        });
+        outer.on('end', ()=>{
+            jsonObject = JSON.parse(str);
+
+            for (let books in jsonObject.books){
+                let id = jsonObject.books[books].id;
+                https.get('https://5gj1qvkc5h.execute-api.us-east-1.amazonaws.com/dev/findBookById/'+id, (inner)=>{
+                    let str1 = '';
+                    let obj = {};
+                    inner.setEncoding('utf8');
+                    inner.on('data', (data)=>{
+                        str1 = str1+data; 
+                    });
+                    inner.on('end', ()=>{
+                        obj = JSON.parse(str1);
+                        jsonObject.books[books]['rating'] = obj.rating;
+                    });
+                    //insertIntoDb(jsonObject.books);
+                });
+            }
+
+            reply({
+                data: grouping(jsonObject.books),
+                statusCode: 200,
+            });
+
+        });
+    });
+}
 }];
 function grouping(array)
 {
     let arr = []
-    console.log("obj", array);
+    //console.log("obj", array);
     obj = {};
     for(let i = 0; i < array.length ; i++)
     {
@@ -127,4 +169,15 @@ function grouping(array)
     return obj;
 
 }
-
+function insertIntoDb(array)
+{
+    for(let i = 0; i < array.length ; i++)
+    {
+        Models.books.create({
+            Author: array[i].Author,
+            id: array[i].id,
+            Name: array[i].Name,
+            rating: array[i].rating
+        })
+    }
+}
