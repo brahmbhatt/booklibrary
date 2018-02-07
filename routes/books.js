@@ -97,12 +97,14 @@ module.exports = [
                                     data: grouping(jsonObject.books),
                                     statusCode: 200,
                                 });
-                
                             }
 						});
-                    });
-                    
+                    });   
 				}
+				// reply({
+                //     data: grouping(jsonObject.books),
+				// 	statusCode: 200,
+				// });
                 //console.log(jsonObject.books.rating);
 				
 			});
